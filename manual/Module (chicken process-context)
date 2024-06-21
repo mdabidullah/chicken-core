@@ -1,0 +1,122 @@
+[[tags: manual]]
+[[toc:]]
+
+== Module (chicken process-context)
+
+This module provides access to the current process context.
+
+* New in CHICKEN 5.4.0: Errors caused by underlying C calls that
+  change errno will produce a condition object with an {{errno}}
+  property, which can be accessed with
+  {{(get-condition-property <the-condition-object> 'exn 'errno)}}.
+
+=== Information about the program's invocation
+
+==== argc+argv
+
+<procedure>(argc+argv)</procedure>
+
+Returns two values: an integer and a foreign-pointer object
+representing the {{argc}} and {{argv}} arguments passed to the current
+process.  See also {{argv}} below.
+
+==== argv
+
+<procedure>(argv)</procedure>
+
+Return a list of all supplied command-line arguments. The first item in
+the list is a string containing the name of the executing program. The
+other items are the arguments passed to the application. It depends on
+the host-shell whether arguments are expanded ('globbed') or not.
+
+NOTE: This is the "raw" unprocessed argument list, including runtime
+options (starting with {{-:}}) which are consumed by the runtime
+library.
+
+==== command-line-arguments
+
+<parameter>(command-line-arguments)</parameter>
+
+Contains the list of arguments passed to this program.
+
+This ''excludes'' the name of the program, as well as any runtime
+options (options starting with {{-:}}) up until the first empty
+runtime option (just {{"-:"}}) or non-runtime option, whichever
+comes first.
+
+In other words, this method returns every option ''after'' the first
+list of unbroken runtime options, which are all skipped.  If an empty
+runtime option is present, that is the last of this list of unbroken
+runtime options and everything after it is returned by this method.
+If a non-runtime option is present, that also breaks up the runtime
+options and this method returns that and every following option.
+
+==== executable-pathname
+
+<procedure>(executable-pathname)</procedure>
+
+Returns a full pathname of the currently-running executable, or {{#f}}
+if it couldn't be determined. When evaluating code in the interpreter,
+this will be a path to {{csi}}.
+
+==== program-name
+
+<parameter>(program-name)</parameter>
+
+The name of the currently executing program. This is equivalent to
+{{(car (argv))}} for compiled programs or the filename following the
+{{-script}} option in interpreted scripts.
+
+
+=== Access to environment variables
+
+==== get-environment-variables
+
+<procedure>(get-environment-variables)</procedure>
+
+Returns a association list of the environment variables and their
+current values (see also [[http://srfi.schemers.org/srfi-98/|SRFI-98]]).
+
+==== get-environment-variable
+
+<procedure>(get-environment-variable STRING)</procedure><br>
+
+Returns the value of the environment variable {{STRING}} or
+{{#f}} if that variable is not defined. See also [[http://srfi.schemers.org/srfi-98/|SRFI-98]].
+
+==== set-environment-variable!
+
+<procedure>(set-environment-variable! VARIABLE VALUE)</procedure>
+
+Sets the environment variable named {{VARIABLE}} to
+{{VALUE}}. Both arguments should be strings. If the variable is
+not defined in the environment, a new definition is created.
+
+==== unset-environment-variable!
+
+<procedure>(unset-environment-variable! VARIABLE)</procedure>
+
+Removes the definition of the environment variable {{VARIABLE}} from
+the environment of the current process. If the variable is not defined,
+nothing happens.
+
+
+=== Process filesystem context
+
+==== change-directory
+
+<procedure>(change-directory NAME)</procedure>
+<procedure>(set! (current-directory) NAME)</procedure>
+
+Changes the current working directory to {{NAME}}.
+
+==== current-directory
+
+<procedure>(current-directory)</procedure>
+
+Returns the name of the current working directory.
+
+---
+Previous: [[Module (chicken process signal)]]
+
+Next: [[Module (chicken process-context posix)]]

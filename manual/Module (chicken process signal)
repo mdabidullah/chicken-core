@@ -1,0 +1,156 @@
+[[tags: manual]]
+[[toc:]]
+
+== Module (chicken process signal)
+
+This module offers procedures for dealing with POSIX process signals.
+
+Please note that signals are very POSIX-specific.  Windows only
+supports rudimentary in-process signals for dealing with user
+interrupts, segmentation violations, floating-point exceptions and the
+like.  Inter-process signals are not supported.  Therefore, most of
+the procedures here are not available on native Windows builds.  If
+that's the case, the description contains a note.
+
+
+=== set-alarm!
+
+<procedure>(set-alarm! SECONDS)</procedure>
+
+Sets an internal timer to raise the {{signal/alrm}}
+after {{SECONDS}} are elapsed.  You can use the
+{{make-signal-handler}} procedure to write a handler for this signal.
+
+'''NOTE''': On native Windows builds (all except cygwin), this
+procedure is unimplemented and will raise an error.
+
+=== make-signal-handler
+
+<procedure>(make-signal-handler SIGNUM ...)</procedure>
+
+Establishes a handler for the POSIX signals with the numbers {{SIGNUM ...}} and returns
+a procedure of zero or one argument. Should one of the given signals be raised, then it will be stored in a
+queue. Invoking the procedure returned by {{make-signal-handler}} with zero arguments or
+with the argument {{#f}} will remove the oldest
+entry in the queue and return it to the caller. Invoking the procedure with argument {{#t}} when no signal was
+raised since the creation of the signal handler or the most recent call to the handler
+will result in suspending the execution until one of the signals given in {{SIGNUM ...}}
+occurs.
+
+Notes:
+
+* when signals arrive in quick succession (specifically, before the handler for a signal has been started), then signals will be queued (up to a certain limit); the order in which the queued signals will be handled is not specified
+
+* Any signal handlers for the signals {{signal/segv}}, {{signal/bus}}, {{signal/fpe}} and {{signal/ill}} will be ignored and these signals will always trigger an exception, unless the executable was started with the {{-:S}} runtime option. This feature is only available on platforms that support the {{sigprocmask(3)}} POSIX API function.
+
+=== signal-ignore
+
+<procedure>(signal-ignore SIGNUM)</procedure>
+
+Ignores any future occurrences if the signal {{SIGNUM}} by setting its disposition to {{SIG_IGN}}.
+
+=== signal-default
+
+<procedure>(signal-default SIGNUM)</procedure>
+
+Sets the default disposition for the signal {{SIGNUM}} by setting its disposition to {{SIG_DFL}}.
+
+=== set-signal-mask!
+
+<procedure>(set-signal-mask! SIGLIST)</procedure>
+
+Sets the signal mask of the current process to block all signals given
+in the list {{SIGLIST}}.  Signals masked in that way will not be
+delivered to the current process.
+
+'''NOTE''': On native Windows builds (all except cygwin), this
+procedure is unimplemented and will raise an error.
+
+=== signal-mask
+
+<procedure>(signal-mask)</procedure>
+
+Returns the signal mask of the current process.
+
+'''NOTE''': On native Windows builds (all except cygwin), this
+procedure is unimplemented and will raise an error.
+
+=== signal-masked?
+
+<procedure>(signal-masked? SIGNUM)</procedure>
+
+Returns whether the signal for the code {{SIGNUM}} is currently masked.
+
+'''NOTE''': On native Windows builds (all except cygwin), this
+procedure is unimplemented and will raise an error.
+
+=== signal-mask!
+
+<procedure>(signal-mask! SIGNUM)</procedure>
+
+Masks (blocks) the signal for the code {{SIGNUM}}.
+
+'''NOTE''': On native Windows builds (all except cygwin), this
+procedure is unimplemented and will raise an error.
+
+=== signal-unmask!
+
+<procedure>(signal-unmask! SIGNUM)</procedure>
+
+Unmasks (unblocks) the signal for the code {{SIGNUM}}.
+
+'''NOTE''': On native Windows builds (all except cygwin), this
+procedure is unimplemented and will raise an error.
+
+=== Signal codes
+
+<constant>signal/term</constant><br>
+<constant>signal/kill</constant><br>
+<constant>signal/int</constant><br>
+<constant>signal/hup</constant><br>
+<constant>signal/fpe</constant><br>
+<constant>signal/ill</constant><br>
+<constant>signal/segv</constant><br>
+<constant>signal/abrt</constant><br>
+<constant>signal/trap</constant><br>
+<constant>signal/quit</constant><br>
+<constant>signal/alrm</constant><br>
+<constant>signal/vtalrm</constant><br>
+<constant>signal/prof</constant><br>
+<constant>signal/io</constant><br>
+<constant>signal/urg</constant><br>
+<constant>signal/chld</constant><br>
+<constant>signal/cont</constant><br>
+<constant>signal/stop</constant><br>
+<constant>signal/tstp</constant><br>
+<constant>signal/pipe</constant><br>
+<constant>signal/xcpu</constant><br>
+<constant>signal/xfsz</constant><br>
+<constant>signal/usr1</constant><br>
+<constant>signal/usr2</constant><br>
+<constant>signal/bus</constant><br>
+<constant>signal/winch</constant><br>
+<constant>signal/break</constant><br>
+<constant>signals-list</constant><br>
+
+These variables contain signal codes for use with {{process-signal}},
+{{set-signal-handler!}}, {{signal-handler}}, {{signal-masked?}},
+{{signal-mask!}}, or {{signal-unmask!}}.
+
+'''NOTE''': On native Windows builds (all except cygwin), only
+{{signal/term}}, {{signal/int}}, {{signal/fpe}}, {{signal/ill}},
+{{signal/segv}}, {{signal/abrt}}, {{signal/break}} have an actual
+value.  The others are all defined as zero, because those signals
+don't exist on Windows.
+
+'''NOTE''': On UNIX builds and cygwin, {{signal/break}} is defined as
+zero because it only exists on Windows.
+
+To get a list of signals that are known to exist on the current
+platform, you can check {{signals-list}} which is a list of integers
+(signal numbers).
+
+---
+Previous: [[Module (chicken process)]]
+
+Next: [[Module (chicken process-context)]]

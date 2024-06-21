@@ -1,0 +1,116 @@
+[[tags: manual]]
+
+== Confirmed deviations from R5RS
+
+Identifiers are by default case-sensitive (see [[Using the compiler]]).
+
+=== Number of arguments to procedures and macros
+
+The maximal number of arguments that may be passed to a
+compiled procedure or macro is limited to around 1000.
+Likewise, the maximum number of values that can be passed
+to continuations captured using {{call-with-current-continuation}}
+is 1000.  This is an implementation restriction that is unlikely
+to be lifted.
+
+
+=== Numeric string-conversion considerations
+
+In some cases the runtime system uses the numerical string-conversion
+routines of the underlying C library.  Consequently, the procedures
+{{string->number}}, {{read}}, {{write}}, and {{display}} do not obey
+read/write invariance for inexact numbers.
+
+
+=== Environments and non-standard syntax
+
+In addition to the standard bindings, {{scheme-report-environment}} and
+{{null-environment}} contain additional non-standard bindings for the
+following syntactic forms: {{import}}, {{require-extension}},
+{{require-library}}, {{begin-for-syntax}}, {{export}}, {{module}},
+{{cond-expand}}, {{syntax}}, {{reexport}}, {{import-for-syntax}}.
+
+=== Assignment to unbound variables
+
+{{set!}} may assign values to unbound variables; this creates a new
+top-level binding for the variable, as if {{define}} had been used
+instead. This extension must be used with care, as typos might cause
+unexpected results:
+
+<enscript highlight="scheme">
+> (let ((frob 5))
+    (set! frov (+ frob 1))  ; oops!
+    frob)
+> 5
+> frov
+> 6
+</enscript>
+
+== Unconfirmed deviations
+
+=== {{char-ready?}}
+
+The procedure {{char-ready?}} always returns {{#t}} for
+terminal ports.
+
+
+
+== Doubtful deviations
+
+=== {{letrec}}
+
+{{letrec}} does evaluate the initial values for the bound
+variables sequentially and not in parallel, that is:
+
+<enscript highlight="scheme">
+(letrec ((x 1) (y 2)) (cons x y))
+</enscript>
+
+is equivalent to
+
+<enscript highlight="scheme">
+(let ((x (void)) (y (void)))
+  (set! x 1)
+  (set! y 2)
+  (cons x y) )
+</enscript>
+
+where R5RS requires
+
+<enscript highlight="scheme">
+(let ((x (void)) (y (void)))
+  (let ((tmp1 1) (tmp2 2))
+    (set! x tmp1)
+    (set! y tmp2)
+    (cons x y) ) )
+</enscript>
+
+It is unclear whether R5RS permits this behavior or not; in any case,
+this only affects letrecs where the bound values are not
+lambda-expressions.
+
+
+== Non-deviations that might surprise you
+
+=== {{let-syntax}} and {{letrec-syntax}}
+
+{{let-syntax}} and {{letrec-syntax}} introduce a new scope.
+
+
+=== {{equal?}} compares all structured data recursively
+
+{{equal?}} compares all structured data with the exception of
+procedures recursively, while R5RS specifies that {{eqv?}} is used for
+data other than pairs, strings and vectors.  However, R5RS does not
+dictate the treatment of data types that are not specified by R5RS
+
+
+=== {{transcript-on}} and {{transcript-off}} are not implemented
+
+The {{transcript-on}} and {{transcript-off}} procedures are
+not implemented.  R5RS does not require them.
+
+---
+Previous: [[Using the compiler]]
+
+Next: [[Extensions to the standard]]

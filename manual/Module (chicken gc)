@@ -1,0 +1,121 @@
+[[tags: manual]]
+[[toc:]]
+
+== Module (chicken gc)
+
+This module provides some control over the garbage collector.
+
+=== gc
+
+<procedure>(gc [FLAG])</procedure>
+
+Invokes a garbage-collection and returns the number of free bytes in the heap.
+The flag specifies whether a minor ({{#f}}) or major ({{#t}}) GC is to be
+triggered. If no argument is given, {{#t}} is assumed. An explicit {{#t}}
+argument will cause all pending finalizers to be executed.
+
+=== current-gc-milliseconds
+
+<procedure>(current-gc-milliseconds)</procedure>
+
+Returns the number of milliseconds spent in major garbage collections since
+the last call of {{current-gc-milliseconds}} and returns an exact
+integer.
+
+=== memory-statistics
+
+<procedure>(memory-statistics)</procedure>
+
+Performs a major garbage collection and returns a three element vector
+containing the total heap size in bytes, the number of bytes currently
+used and the size of the nursery (the first heap generation). Note
+that the actual heap is actually twice the size given in the heap size,
+because CHICKEN uses a copying semi-space collector.
+
+
+=== set-finalizer!
+
+<procedure>(set-finalizer! X PROC)</procedure>
+
+Registers a procedure of one argument {{PROC}}, that will be
+called as soon as the non-immediate data object {{X}} is about to
+be garbage-collected (with that object as its argument).
+This procedure returns {{X}}.
+
+Finalizers installed using {{set-finalizer!}} are invoked asynchronously,
+in the thread that happens to be currently running.
+Finalizers for data that has become garbage
+are called on normal program exit. Finalizers are not run on
+abnormal program exit. A normal program exit does not run finalizers
+that are still reachable from global data.
+
+Multiple finalizers can be registered for the same object. The order
+in which the finalizers run is undefined. Execution of finalizers
+may be nested.
+
+NOTE 1: The finalizer will '''not''' be called while interrupts are disabled.
+
+NOTE 2: When a finalizable object has any weak references (i.e., weak
+locatives or weak pairs) to objects that are only reachable through it
+or other finalizable objects, those references will be broken like
+when the objects had already been collected.  This is done in order to
+avoid user code from accessing objects that are possibly in an
+invalid state.
+
+
+=== make-finalizer
+
+<procedure>(make-finalizer OBJECT ...)</procedure>
+
+Registers the set of non-immediate argument objects for finalization and
+returns a procedure of zero or one arguments. Invoking this procedure
+will return the first object from the set that
+is not referenced from any other globally reachable data and can be
+garbage collected.
+Non-immediate objects are anything that is not a small integer ("fixnum"),
+a character, a boolean, the empty list, the undefined value, the end-of-file
+value ({{#!eof}}) or the broken-weak-pair object ({{#!bwp}}).
+
+Note that you can pass procedures created by {{make-finalizer}} to
+{{make-finalizer}} itself, implying that a finalizer procedure is finalized
+when all associated objects are.
+
+The procedure returned by {{make-finalizer}} behaves differently
+depending on the argument given: If the argument is missing or {{#f}},
+then it returns {{#f}} when no object has as yet been finalized.
+When the argument is {{#t}}, execution of the current thread suspends until a finalization
+occurs. If no other threads are executing then execution pauses for eternity.
+
+The same caveat regarding weak references applies to finalizers
+registered with {{make-finalizer}}.  See {{NOTE 2}} in {{set-finalizer!}}.
+
+=== add-to-finalizer
+
+<procedure>(add-to-finalizer FINALIZER OBJECT ...)</procedure>
+
+Add further objects to the finalization procedure {{FINALIZER}}, in
+addition to the objects already supplied when invoking {{make-finalizer}}.
+
+=== force-finalizers
+
+<parameter>(force-finalizers)</parameter>
+
+If true, force and execute all pending finalizers before exiting the
+program (either explicitly by {{exit}} or implicitly when the last
+toplevel expression has been executed). Default is {{#t}}.
+
+
+=== set-gc-report!
+
+<procedure>(set-gc-report! FLAG)</procedure>
+
+Print statistics after every GC, depending on {{FLAG}}. A value of
+{{#t}} shows statistics after every major GC. A true value different
+from {{#t}} shows statistics after every minor GC. {{#f}}
+switches statistics off.
+
+
+---
+Previous: [[Module (chicken format)]]
+
+Next: [[Module (chicken io)]]

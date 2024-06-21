@@ -1,0 +1,271 @@
+[[tags: manual]]
+[[toc:]]
+
+== Introduction to extensions
+
+=== Extension libraries
+
+Extension libraries (''eggs'') are extensions to the core
+functionality provided by the basic CHICKEN system, to be built and
+installed separately.  The mechanism for loading compiled extensions
+is based on dynamically loadable code and as such is only available on
+systems on which loading compiled code at runtime is
+supported. Currently these are most UNIX-compatible platforms that
+provide the {{libdl}} functionality like Linux, Solaris, BSD, Mac OS X
+and Windows using Cygwin.
+
+On systems where dynamic loading is not available, extensions can
+still be built and linked as static object files.
+
+Note: eggs may also be normal applications or shell scripts, but
+are usually libraries.
+
+Extensions are technically nothing but dynamically loadable compiled
+files with added meta-data that describes dependencies to other
+eggs, version information and things like the author/maintainer 
+of the egg. Three tools provide an easy to use interface for
+installing eggs, removing them and querying the current
+status of installed eggs.
+
+
+=== Installing eggs
+
+To install an egg, run the {{chicken-install}} program
+with the egg name as argument. The egg archive is
+downloaded, its contents extracted and the contained egg description
+file is analyzed and the appropriate commands executed. 
+This file is an abstract description of the contents of
+the egg and
+will be translated by {{chicken-install}} into build- and installation
+scripts for the current platform. After running these scripts (and
+if all goes well), the egg is installed and will be available
+like a built-in library. The format and meaning
+of the file will be described below.
+
+Installation will copy
+a number of given files into the local egg repository or in the
+path where the CHICKEN executables are located (in the case of
+executable programs or scripts). Additionally the list of installed
+files, and user-defined metadata is stored in the repository.
+
+If no egg name is given on the command-line, then all {{.egg}}
+files in the current directory are processed, including all {{.egg}}
+files in a subdirectory {{chicken}} (if such a directory exists),
+in some arbitrary
+order, unless the egg descriptions specify dependencies.
+
+==== Installing eggs that use libraries
+
+Sometimes an egg requires a C library to compile. Compilation
+can fail when your system has this library in a nonstandard
+location. Normally the C compiler searches in the default locations
+{{/usr}} and {{/usr/local}}, and in the prefix where CHICKEN itself
+was installed. Sometimes this is not enough, so you'll need to supply
+{{chicken-install}} with some extra hints to the C compiler/linker. Here's
+an example:
+
+  CSC_OPTIONS='-I/usr/pkg/include/mysql -L/usr/pkg/lib/mysql -L -R/usr/pkg/lib/mysql' chicken-install mysql
+
+This installs the mysql egg with the extra compiler options -I and -L
+to set the include path and the library search path. The second -L
+switch passes the -R option directly to the linker, which causes the
+library path to get hardcoded into the resulting extension file (for
+systems that do not use {{ld.so.conf}}).
+
+The environment variables {{CHICKEN_C_INCLUDE_PATH}} and {{CHICKEN_C_LIBRARY_PATH}}
+can also be used to override include- and linker-paths. Each of these variables
+may contain one or more directory names, separated by {{:}} or {{;}} and will
+be passed using {{-I}} and {{-L}} to the C compiler.
+
+Finally, you can use the {{custom-build}} egg file property to use a
+custom script to compile your extension's code. See below for more information.
+
+=== Creating eggs
+
+An egg can be created by placing the code and some special
+files in a directory of its own.
+For example, if your egg is called {{foo}}, create a directory called {{foo}}
+and put the egg code there (the directory's name is not actually important).
+
+Eggs need an egg description file {{<egg name>.egg}}.  This file
+indicates how the egg is to be compiled and provides some information
+about the egg (author, license, dependencies etc).
+
+The format of these files is described in full in the chapter entitled
+"[[Egg specification format]]".  Below we'll give a few brief
+examples of simple eggs.
+
+
+=== Examples for extensions
+
+==== A simple library
+
+The simplest case is a single file that does not export any syntax. 
+For example
+
+<enscript highlight=scheme>
+;;;; hello.scm
+
+(define (hello name)
+  (print "Hello, " name " !") )
+</enscript>
+
+We need an {{.egg}} file to build and install our nifty extension:
+
+<enscript highlight=scheme>
+;;;; hello.egg
+
+((author "Me")
+ (synopsis "A cool hello-world library")
+ (license "GPLv3")
+ (components (extension hello)))
+</enscript>
+
+After entering 
+
+ $ chicken-install
+
+at the shell prompt (and in the same directory where the two files
+exist), the file {{hello.scm}} will be compiled into a dynamically
+loadable library and a statically linkable object.
+If the compilation succeeds, {{hello.so}} and {{hello.o}} will
+be stored in the repository, together with a file named
+{{hello.egg-info}} containing an a-list with metadata (what
+you stored above in {{hello.egg}} plus some additional metadata).
+If no extension name is given to {{chicken-install}}, it will simply
+process any files with the {{.egg}} extension it can find.
+
+Use it like any other CHICKEN extension:
+
+ $ csi -q
+ #;1> (require-library hello)
+ ; loading /usr/local/lib/chicken/8/hello.so ...
+ #;2> (hello "me")
+ Hello, me!
+ #;3>
+
+==== An application
+
+Here we create a simple application:
+
+<enscript highlight=scheme>
+;;;; hello2.scm
+(import scheme chicken.format chicken.process-context)
+(print "Hello, ")
+(for-each (lambda (x) (printf "~A " x)) (command-line-arguments))
+(print "!")
+</enscript>
+
+We also need an egg file:
+
+<enscript highlight=scheme>
+;;;; hello2.egg
+((author "Me")
+ (synopsis "A cool hello-world application")
+ (license "proprietary")
+ (components (program hello2)))
+</enscript>
+
+To use it, just run {{chicken-install}} in the same directory:
+
+ $ chicken-install
+
+(Here we omit the extension name)
+
+Now the program {{hello2}} will be installed in the same location as
+the other CHICKEN tools (like {{chicken}}, {{csi}}, etc.), which will
+normally be {{/usr/local/bin}}.  Note that you need write-permissions
+for those locations and may have to run {{chicken-install}} with
+administrative rights or use the {{-sudo}} option.
+
+The extension can be used from the command line:
+
+ $ hello2 one two three
+ Hello, 
+ one two three !
+
+De-installation is just as easy - use the {{chicken-uninstall}}
+program to remove one or more extensions from the local repository:
+
+ $ chicken-uninstall hello2
+
+==== A module exporting syntax
+
+The hello module was just a shared library, and not a module.
+
+To create an extension that exports syntax see the chapter on
+[[Modules]].  We will show a simple example here: a module {{my-lib}}
+that exports one macro ({{prog1}}) and one procedure ({{my-sum}}):
+
+<enscript highlight=scheme>
+;;; my-lib.scm
+
+(module my-lib
+  *
+  (import scheme (chicken base))
+
+(define-syntax prog1
+  (syntax-rules ()
+    ((_ e1 e2 ...)
+     (let ((result e1))
+       (begin e2 ...)
+       result))))
+
+(define my-sum
+  (lambda (numbers)
+    (prog1
+      (apply + numbers)
+      (display "my-sum used one more time!")
+      (newline))))
+
+)
+</enscript>
+
+The {{prog1}} macro is similar to Common Lisp's {{prog1}}: it
+evaluates a list of forms, but returns the value of the first form.
+
+The egg file:
+
+<enscript highlight=scheme>
+;;; my-lib.egg
+
+((components (extension my-lib))
+ (version 1.0)
+ (license "BSD")
+ (author "Me again")
+ (synopsis "My own cool libraries"))
+</enscript>
+
+Running {{chicken-install}} on the same directory will install the extension.
+
+Next, it should be possible to load the library:
+
+ $ csi -q
+ #;1> (import my-lib)
+ ; loading /usr/local/lib/chicken/6/my-lib.import.so ...
+ ; loading /usr/local/lib/chicken/6/scheme.import.so ...
+ ; loading /usr/local/lib/chicken/6/chicken.import.so ...
+ ; loading /usr/local/lib/chicken/6/my-lib.so ...
+ #;2> (my-sum '(10 20 30))
+ my-sum used one more time!
+ 60
+ #;3> (my-sum '(-1 1 0))
+ my-sum used one more time!
+ 0
+ #;4> (prog1 (+ 2 2) (print "---"))
+ ---
+ 4
+
+To query the list of currently installed extensions, use
+{{chicken-status}}. It can list what extensions are installed and
+what files belong to a particular installed extension.
+
+For more information about the available tools and the various options
+they provide, consult the [[Extension tools]] chapter.  Again, for a
+full list of allowed declarations in the {{.egg}} file, see the
+[[Egg specification format]] chapter.
+
+---
+Previous: [[Declarations]]
+
+Next: [[Extension tools]]
